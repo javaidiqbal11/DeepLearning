@@ -127,18 +127,18 @@ def cells():
                 return self.fc(out[:, -1])          # classify from the final state
         """),
         code("""
-        # ~3 minutes.
-        LENGTHS = [5, 10, 25, 50]
+        # ~3 minutes. Three gap lengths x three architectures = nine small models.
+        LENGTHS = [5, 15, 40]
         results = {"RNN": [], "LSTM": [], "GRU": []}
 
         for T in LENGTHS:
-            Xtr, ytr = make_copy_task(2000, T, seed=1)
-            Xte, yte = make_copy_task(500, T, seed=2)
+            Xtr, ytr = make_copy_task(1500, T, seed=1)
+            Xte, yte = make_copy_task(400, T, seed=2)
             for kind in results:
                 set_seed(0)
                 model = SeqClassifier(kind)
                 opt = torch.optim.Adam(model.parameters(), lr=5e-3)
-                for _ in range(60):
+                for _ in range(35):
                     perm = torch.randperm(len(Xtr))
                     for i in range(0, len(Xtr), 128):
                         idx = perm[i:i + 128]
@@ -231,7 +231,7 @@ def cells():
         train_data, val_data = encoded[:split], encoded[split:]
 
         opt = torch.optim.Adam(lm.parameters(), lr=3e-3)
-        STEPS = 1200
+        STEPS = 800
         losses = []
 
         lm.train()
@@ -244,7 +244,7 @@ def cells():
             nn.utils.clip_grad_norm_(lm.parameters(), 1.0)
             opt.step()
             losses.append(loss.item())
-            if (step + 1) % 300 == 0:
+            if (step + 1) % 200 == 0:
                 lm.eval()
                 with torch.no_grad():
                     vx, vy = get_batch(val_data, 128)
@@ -368,7 +368,7 @@ def cells():
         opt = torch.optim.Adam(captioner.parameters(), lr=2e-3)
         loader = DataLoader(TensorDataset(cap_images, cap_tokens), batch_size=64, shuffle=True)
 
-        for epoch in range(12):
+        for epoch in range(10):
             captioner.train()
             total = 0.0
             for imgs, toks in loader:
@@ -380,7 +380,7 @@ def cells():
                                        ignore_index=cstoi[PAD])   # never learn from padding
                 loss.backward(); opt.step()
                 total += loss.item() * len(imgs)
-            if (epoch + 1) % 3 == 0:
+            if (epoch + 1) % 2 == 0:
                 print(f"epoch {epoch+1:2d}  loss {total/len(cap_images):.4f}")
         """),
         code("""

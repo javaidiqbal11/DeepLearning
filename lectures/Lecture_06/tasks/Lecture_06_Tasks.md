@@ -43,7 +43,7 @@ Implement BasicBlock with two 3x3 convolutions, BatchNorm and a skip connection,
 
 ### Task 2 — Reproduce the degradation problem
 
-Train a 20-layer and a 40-layer plain CNN. Show the deeper one has higher *training* loss. Add skip connections to both and show the ordering reverses.
+Train an 8-layer and a 22-layer plain CNN without BatchNorm. Show the deeper one has higher TRAINING loss. Add skip connections to both and show the ordering reverses. Be explicit that both numbers you report are training metrics, not validation ones.
 
 **Deliverable:** working code in the notebook, plus the requested number, table or plot. Where the task asks you to explain something, write it in a markdown cell directly beneath the code — two or three sentences is the right length.
 
@@ -67,15 +67,19 @@ Sweep the number of unfrozen backbone blocks from 0 to all. Plot target-task acc
 
 ---
 
-## Stretch tasks (2, optional)
+## Stretch tasks (3, optional)
 
 Not marked, but these are where the subject gets interesting. Attempt at least one over the semester if you are aiming for an A.
 
-### Stretch 1 — 1x1 bottleneck cost analysis
+### Stretch 1 — What BatchNorm does to degradation
+
+Re-run the degradation experiment with use_bn=True in both block types. Report a four-row table of training accuracy and state how much of the degradation BatchNorm removes on its own, and what is left for the skip connection to fix.
+
+### Stretch 2 — 1x1 bottleneck cost analysis
 
 Compare parameters and FLOPs for a plain 3x3-3x3 block against a 1x1-3x3-1x1 bottleneck of equal input/output width. Report the ratio and verify with a forward-pass timing.
 
-### Stretch 2 — Depthwise separable convolution
+### Stretch 3 — Depthwise separable convolution
 
 Implement it and substitute it into your ResNet. Report the accuracy lost and the parameters saved.
 
@@ -88,7 +92,7 @@ Implement it and substitute it into your ResNet. Report the accuracy lost and th
 - [ ] Every core task is answered, in order, under its own heading.
 - [ ] Every plot has axis labels and a title.
 - [ ] Written answers are in markdown cells, not in code comments.
-- [ ] Results added to your running `results.md` table (carried across all 16 lectures).
+- [ ] Results added to your running `results.md` table (carried across every lecture).
 - [ ] Any AI-assistant use is disclosed in a short note at the end of the notebook.
 
 Submit as: `LASTNAME_FIRSTNAME_L06.ipynb`

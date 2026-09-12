@@ -25,6 +25,7 @@ MUTED = RGBColor(0x5A, 0x63, 0x75)
 PAPER = RGBColor(0xFF, 0xFF, 0xFF)
 WASH = RGBColor(0xF4, 0xF6, 0xFA)
 PART_COLOURS = {
+    0: RGBColor(0x4A, 0x52, 0x65),   # slate   - ML primer
     1: RGBColor(0x1F, 0x6F, 0xB2),   # blue    - foundations
     2: RGBColor(0x1B, 0x86, 0x6B),   # green   - convolutional vision
     3: RGBColor(0xC1, 0x6A, 0x1C),   # amber   - systems
@@ -150,16 +151,24 @@ def slide_agenda(prs, lec):
     s = _blank(prs)
     accent = PART_COLOURS[lec["part"]]
     top = _title_slide_header(s, lec, "Agenda", kicker="Where we are going")
+
+    # Pitch adapts to the section count: Lecture 0 has eight, most have five or six.
+    n = len(lec["outline"])
+    avail = H - top - Inches(1.05)                 # leave room for the lab line + footer
+    pitch = min(Inches(0.66), avail / max(n + 1, 1))
+    size = 18 if pitch >= Inches(0.6) else 15
+
     for i, (section, _) in enumerate(lec["outline"], start=1):
-        row = top + Inches(0.12) + Inches(0.66) * (i - 1)
-        tf = _textbox(s, MARGIN, row, Inches(0.55), Inches(0.5))
-        _para(tf, f"{i:02d}", 17, accent, bold=True, first=True)
-        tf = _textbox(s, MARGIN + Inches(0.75), row + Inches(0.02), BODY_W - Inches(0.75), Inches(0.5))
-        _para(tf, section, 18, INK, first=True)
-        _rect(s, MARGIN, row + Inches(0.55), BODY_W, Emu(9525), WASH)
-    lab_row = top + Inches(0.12) + Inches(0.66) * len(lec["outline"]) + Inches(0.12)
-    tf = _textbox(s, MARGIN, lab_row, BODY_W, Inches(0.5))
-    _para(tf, "Then: hands-on lab  →  " + lec["dataset"], 14, MUTED, italic=True, first=True)
+        row = top + Inches(0.08) + pitch * (i - 1)
+        tf = _textbox(s, MARGIN, row, Inches(0.55), pitch - Inches(0.08))
+        _para(tf, f"{i:02d}", size - 1, accent, bold=True, first=True)
+        tf = _textbox(s, MARGIN + Inches(0.75), row, BODY_W - Inches(0.75), pitch - Inches(0.08))
+        _para(tf, section, size, INK, first=True)
+        _rect(s, MARGIN, row + pitch - Inches(0.06), BODY_W, Emu(9525), WASH)
+
+    lab_row = top + Inches(0.08) + pitch * n + Inches(0.08)
+    tf = _textbox(s, MARGIN, lab_row, BODY_W, Inches(0.45))
+    _para(tf, "Then: hands-on lab  →  " + lec["dataset"], 13, MUTED, italic=True, first=True)
     _footer(s, lec)
     return s
 
@@ -281,15 +290,19 @@ def slide_summary(prs, lec):
     # The first bullet of each section is its headline claim.
     points = [bullets[0] for _section, bullets in lec["outline"]]
     n = len(points)
+    avail = H - top - Inches(1.25)                 # room for the "next lecture" line
+    pitch = min(Inches(0.78), avail / max(n, 1))
+    size = 17 if pitch >= Inches(0.75) else (16 if pitch >= Inches(0.62) else 14)
+
     for i, p in enumerate(points):
-        row = top + Inches(0.05) + Inches(0.78) * i
-        _rect(s, MARGIN, row + Inches(0.2), Inches(0.16), Inches(0.16), accent)
-        tf = _textbox(s, MARGIN + Inches(0.42), row, BODY_W - Inches(0.42), Inches(0.7))
-        _para(tf, p, 16 if n > 5 else 17, INK, first=True)
+        row = top + Inches(0.04) + pitch * i
+        _rect(s, MARGIN, row + Inches(0.16), Inches(0.14), Inches(0.14), accent)
+        tf = _textbox(s, MARGIN + Inches(0.40), row, BODY_W - Inches(0.40), pitch - Inches(0.06))
+        _para(tf, p, size, INK, first=True)
 
     nxt = lec["number"] + 1
     if nxt <= 16:
-        nxt_lec = LECTURES[nxt - 1]
+        nxt_lec = LECTURES[nxt]
         tf = _textbox(s, MARGIN, H - Inches(1.1), BODY_W, Inches(0.5))
         _para(tf, f"Next — Lecture {nxt:02d}: {nxt_lec['title']}", 14, accent, bold=True, first=True)
     _footer(s, lec)
@@ -330,7 +343,7 @@ def main():
         n = len(prs.slides.__iter__.__self__._sldIdLst)
         total += n
         print(f"  L{lec['number']:02d}  {n:2d} slides  {path.name}")
-    print(f"Built 16 decks, {total} slides total.")
+    print(f"Built {len(LECTURES)} decks, {total} slides total.")
 
 
 if __name__ == "__main__":

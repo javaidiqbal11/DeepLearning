@@ -10,7 +10,7 @@ Part II - Convolutional Vision · DL-601 Deep Learning
 |---|---|
 | `slides/Lecture_06_Modern_CNN_Architectures_and_Transfer_Learning.pptx` | Lecture deck, ready to present |
 | `notebooks/L06_Modern_CNN_Architectures_and_Transfer_Learni.ipynb` | Hands-on lab, runs end to end on CPU |
-| `tasks/Lecture_06_Tasks.md` | 5 core + 2 stretch tasks for students |
+| `tasks/Lecture_06_Tasks.md` | 5 core + 3 stretch tasks for students |
 | `data/README.md` | Which datasets this lecture uses and how to load them |
 
 ## Learning objectives
@@ -30,7 +30,7 @@ Part II - Convolutional Vision · DL-601 Deep Learning
 
 ## The lab
 
-Implement a residual block and a small ResNet, empirically reproduce the degradation problem with a 20- versus 40-layer plain network, then run the transfer-learning comparison: a source model pre-trained on one shape subset, transferred to a 100-example target task, versus training from scratch.
+Implement a residual block and a small ResNet; reproduce the degradation problem by training 8- and 22-layer plain networks and watching the deeper one fail to fit its own training data; then run the transfer-learning comparison: a source model pre-trained on one shape subset, transferred to a 100-example target task, against training from scratch.
 
 **Data:** `shapes_32.npz, shapes_imagefolder/`
 

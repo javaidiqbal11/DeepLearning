@@ -96,7 +96,7 @@ def task_sheet(lec) -> str:
     add("- [ ] Every core task is answered, in order, under its own heading.")
     add("- [ ] Every plot has axis labels and a title.")
     add("- [ ] Written answers are in markdown cells, not in code comments.")
-    add("- [ ] Results added to your running `results.md` table (carried across all 16 lectures).")
+    add("- [ ] Results added to your running `results.md` table (carried across every lecture).")
     add("- [ ] Any AI-assistant use is disclosed in a short note at the end of the notebook.")
     add("")
     add(f"Submit as: `LASTNAME_FIRSTNAME_L{n:02d}.ipynb`")
@@ -111,7 +111,7 @@ def task_sheet(lec) -> str:
         add(f"- {r}")
     add("")
     if n < 16:
-        nxt = LECTURES[n]
+        nxt = LECTURES[n + 1]
         add("---")
         add("")
         add(f"**Next lecture —** {nxt['number']:02d}: {nxt['title']}. {nxt['tagline']}")
@@ -177,6 +177,9 @@ def lecture_readme(lec) -> str:
 
 
 DATA_NOTES = {
+    "scikit-learn iris (bundled with the library)":
+        "150 flowers, 4 measurements, 3 species. Ships inside scikit-learn, so "
+        "nothing to download. `from sklearn.datasets import load_iris`",
     "shapes_32.npz": "6000/1000/1000 train/val/test 32x32 RGB images, 4 classes "
                      "(circle, square, triangle, star). `load_shapes()`",
     "shapes_imagefolder/": "The same data as PNG files in class subfolders, for practising "
@@ -198,8 +201,10 @@ DATA_NOTES = {
 def data_readme(lec) -> str:
     names = [d.strip() for d in lec["dataset"].split(",")]
     out = [f"# Data for Lecture {lec['number']:02d}", "",
-           "All datasets live in the repository-level `data/` folder and are generated offline by",
-           "`python tools/build_data.py`. Nothing is downloaded and no internet connection is needed.",
+           "Course datasets live in the repository-level `data/` folder and are generated",
+           "offline by `python tools/build_data.py`. A few lectures also use datasets that",
+           "ship inside scikit-learn. Either way nothing is downloaded and no internet",
+           "connection is needed.",
            "", "## Used in this lecture", ""]
     for nm in names:
         note = DATA_NOTES.get(nm, "See `dlcourse/data.py`.")

@@ -17,66 +17,67 @@ def cells():
         In 2015 He et al. reported something that looked like a bug: a 56-layer plain
         network had **higher training error** than a 20-layer one.
 
-        That is not overfitting — overfitting would show as higher *test* error with lower
-        training error. It is an optimisation failure. The deeper network could in
-        principle learn the identity in its extra layers and match the shallow one
-        exactly, and it fails to find that solution.
+        That is not overfitting — overfitting means higher *test* error with *lower*
+        training error. This is an optimisation failure. The deeper network could match
+        the shallow one exactly by learning the identity in its extra layers, and gradient
+        descent does not find that solution.
 
-        Reproduce it here, at a scale that runs on a laptop.
+        We reproduce it below at laptop scale. Two details make it visible:
+
+        - **Depth**: 22 layers versus 8.
+        - **No BatchNorm.** This is the setting the problem was discovered in, and it is
+          the honest one: BatchNorm partially masks degradation, so leaving it in would
+          let us claim a result the experiment does not show. You will measure BatchNorm's
+          effect yourself in the stretch task.
         """),
         code("""
-        class PlainBlock(nn.Module):
-            \"\"\"conv -> BN -> ReLU -> conv -> BN -> ReLU. No skip.\"\"\"
+        class Block(nn.Module):
+            \"\"\"One block, with the skip connection as a switch.
 
-            def __init__(self, channels):
+            Everything else is identical between the two variants, so any difference in
+            the results is attributable to the skip and nothing else.
+            \"\"\"
+
+            def __init__(self, channels, residual, use_bn=False):
                 super().__init__()
-                self.c1 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
-                self.b1 = nn.BatchNorm2d(channels)
-                self.c2 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
-                self.b2 = nn.BatchNorm2d(channels)
-
-            def forward(self, x):
-                out = F.relu(self.b1(self.c1(x)))
-                return F.relu(self.b2(self.c2(out)))
-
-
-        class ResidualBlock(nn.Module):
-            \"\"\"The same, plus the identity shortcut: y = ReLU(F(x) + x).\"\"\"
-
-            def __init__(self, channels):
-                super().__init__()
-                self.c1 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
-                self.b1 = nn.BatchNorm2d(channels)
-                self.c2 = nn.Conv2d(channels, channels, 3, padding=1, bias=False)
-                self.b2 = nn.BatchNorm2d(channels)
+                self.residual = residual
+                self.c1 = nn.Conv2d(channels, channels, 3, padding=1, bias=not use_bn)
+                self.c2 = nn.Conv2d(channels, channels, 3, padding=1, bias=not use_bn)
+                self.b1 = nn.BatchNorm2d(channels) if use_bn else nn.Identity()
+                self.b2 = nn.BatchNorm2d(channels) if use_bn else nn.Identity()
 
             def forward(self, x):
                 out = F.relu(self.b1(self.c1(x)))
                 out = self.b2(self.c2(out))
-                return F.relu(out + x)          # <- the entire idea
+                return F.relu(out + x) if self.residual else F.relu(out)
 
 
-        def deep_net(n_blocks, residual, width=24, seed=0):
+        def deep_net(n_blocks, residual, use_bn=False, width=24, seed=0):
             torch.manual_seed(seed)
-            Block = ResidualBlock if residual else PlainBlock
             return nn.Sequential(
-                nn.Conv2d(3, width, 3, padding=1, bias=False),
+                # Stride-2 stem: the stacked blocks run at 16x16 rather than 32x32, which
+                # is 4x cheaper. Degradation is about depth, not resolution.
+                nn.Conv2d(3, width, 3, stride=2, padding=1, bias=False),
                 nn.BatchNorm2d(width), nn.ReLU(),
-                *[Block(width) for _ in range(n_blocks)],
-                nn.AdaptiveAvgPool2d(1), nn.Flatten(),
-                nn.Linear(width, len(CLASSES)),
+                *[Block(width, residual, use_bn) for _ in range(n_blocks)],
+                nn.AdaptiveMaxPool2d(2), nn.Flatten(),
+                nn.Linear(width * 4, len(CLASSES)),
             )
+
+        print("8-layer plain   :", count_parameters(deep_net(3, False)), "parameters")
+        print("22-layer plain  :", count_parameters(deep_net(10, False)), "parameters")
         """),
         code("""
-        # ~2 minutes. Four networks, deliberately restricted to a small subset so the
-        # optimisation difficulty — not the data — is what we are measuring.
-        SUB = 1500
+        # ~4 minutes. Four networks. A small training subset keeps the *optimisation*
+        # difficulty -- not the amount of data -- as the thing being measured.
+        SUB = 1000
         Xs, ys = X_train[:SUB], y_train[:SUB]
-        EPOCHS = 6
+        EPOCHS = 8
+        DEPTHS = [3, 10]                      # blocks -> 8 and 22 layers
 
         degradation = {}
         for residual in (False, True):
-            for depth in (3, 8):
+            for depth in DEPTHS:
                 set_seed(0)
                 model = deep_net(depth, residual)
                 h = train(model, (Xs, ys), (X_val, y_val), epochs=EPOCHS,
@@ -89,35 +90,64 @@ def cells():
                       f"train_acc {train_acc:.3f}   val_acc {h.val_acc[-1]:.3f}")
         """),
         code("""
-        fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4))
-        for i, kind in enumerate(["plain", "residual"]):
-            depths = [d for (k, d) in degradation if k == kind]
-            losses = [degradation[(kind, d)][0] for d in depths]
-            accs   = [degradation[(kind, d)][2] for d in depths]
-            a1.plot(depths, losses, marker="o", lw=2, label=kind)
-            a2.plot(depths, accs,   marker="o", lw=2, label=kind)
+        layer_counts = [d * 2 + 2 for d in DEPTHS]
+        fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.2))
+        for kind, colour in [("plain", "#c0392b"), ("residual", "#1b866b")]:
+            a1.plot(layer_counts, [degradation[(kind, d)][0] for d in layer_counts],
+                    marker="o", lw=2, label=kind, color=colour)
+            a2.plot(layer_counts, [degradation[(kind, d)][1] for d in layer_counts],
+                    marker="o", lw=2, label=kind, color=colour)
         a1.set_xlabel("depth (layers)"); a1.set_ylabel("final TRAINING loss")
-        a1.set_title("Training loss vs depth\\n(plain gets worse — that is degradation)")
-        a2.set_xlabel("depth (layers)"); a2.set_ylabel("validation accuracy")
-        a2.set_title("Validation accuracy vs depth")
+        a1.set_title("Training loss vs depth")
+        a2.set_xlabel("depth (layers)"); a2.set_ylabel("TRAINING accuracy")
+        a2.set_title("Training accuracy vs depth")
+        a2.axhline(1 / len(CLASSES), color="k", ls=":", lw=1, label="chance")
         for a in (a1, a2):
-            a.grid(alpha=.3); a.legend()
+            a.set_xticks(layer_counts); a.grid(alpha=.3); a.legend()
+        fig.suptitle("Both axes are TRAINING metrics — this is optimisation failing, "
+                     "not overfitting")
         plt.tight_layout(); plt.show()
+
+        plain_delta = degradation[("plain", 22)][1] - degradation[("plain", 8)][1]
+        res_delta = degradation[("residual", 22)][1] - degradation[("residual", 8)][1]
+        print(f"going from 8 to 22 layers changes TRAINING accuracy by:")
+        print(f"  plain    {plain_delta:+.3f}   <- deeper is worse")
+        print(f"  residual {res_delta:+.3f}   <- deeper is better")
         """),
         md("""
+        ### Read that carefully
+
+        Both plots show **training** metrics. The 22-layer plain network cannot even fit
+        the data it was trained on — it sits near chance. That is not a generalisation
+        problem that more data would fix. Gradient descent simply fails to find a good
+        solution.
+
+        And the deeper plain network is strictly *more expressive* than the shallow one:
+        it could copy the 8-layer network and set its extra blocks to the identity. The
+        solution exists. The optimiser does not reach it.
+
         ### Why the shortcut fixes it
 
-        A plain block must learn a mapping `H(x)` from scratch. If the best thing it could
-        do is nothing at all, it has to learn the identity — and stacked non-linear layers
-        are surprisingly bad at representing the identity exactly.
+        A plain block must learn its whole mapping `H(x)` from scratch. If the best thing
+        it could do is nothing at all, it has to learn the identity — and a stack of
+        convolutions and ReLUs is surprisingly bad at representing the identity exactly.
 
         A residual block computes `H(x) = F(x) + x`. To do nothing it only needs
-        `F(x) = 0`, which is easy: drive the weights toward zero. **The identity is the
+        `F(x) = 0`, which is easy: push the weights toward zero. **The identity is the
         default behaviour, and the block learns the deviation from it.**
 
-        The second benefit is the one you measured in Lecture 3: `d(x + F(x))/dx = 1 + dF/dx`.
-        That `1` gives gradients a path to the early layers that skips all the
-        multiplications.
+        The second benefit is the one you measured in Lecture 3:
+        `d(x + F(x))/dx = 1 + dF/dx`. That `1` gives the gradient a path to the early
+        layers that skips every multiplication on the way.
+
+        ### What BatchNorm does to this picture
+
+        Add BatchNorm to both block types and the collapse largely disappears — the
+        22-layer plain network trains, just slightly worse than the 8-layer one. BatchNorm
+        substantially mitigates degradation; residual connections remove it, and keep
+        working at depths where BatchNorm alone stops being enough.
+
+        That is stretch Task 6: run it with `use_bn=True` and compare.
         """),
         section("2. A proper ResNet", """
         Real ResNets change channel count and spatial size as they go, so the shortcut
@@ -311,7 +341,7 @@ def cells():
 
         n_blocks = len(list(source_model.stages))
         sweep = {}
-        for k in range(0, n_blocks + 1):
+        for k in range(0, n_blocks + 1, 2):
             set_seed(3)
             model = unfreeze_last_k(source_model, k)
             params = [p for p in model.parameters() if p.requires_grad]
@@ -377,8 +407,12 @@ def cells():
         """),
         todo_cell(),
         todo("2", "Reproduce the degradation problem", """
-        Train a 20-layer and a 40-layer plain CNN. Show the deeper one has higher
-        **training** loss. Add skip connections to both and show the ordering reverses.
+        Train an 8-layer and a 22-layer plain CNN **without BatchNorm**. Show the deeper
+        one has higher **training** loss. Add skip connections to both and show the
+        ordering reverses.
+
+        Be explicit in your write-up that both numbers are *training* metrics — that is
+        what separates degradation from overfitting.
         """),
         todo_cell(),
         todo("3", "Small ResNet on shapes", """

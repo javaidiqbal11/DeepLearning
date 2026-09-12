@@ -2,11 +2,14 @@
 
 **Foundations, Computer Vision and Production Systems**
 
-A complete, ready-to-teach graduate module: 16 lectures, each with a slide deck, a
-runnable notebook, its own data, and a marked task sheet.
+A complete, ready-to-teach graduate module: **Lecture 0 (machine learning from
+scratch) plus 16 deep learning lectures**. Each one has a slide deck, a runnable
+notebook containing all of its tasks, and a printable task sheet.
+
+Start at Lecture 0 even if you have never trained a model. It assumes nothing.
 
 📄 **[Deep_Learning_Course_Module.pdf](Deep_Learning_Course_Module.pdf)** — the full
-course module document (28 pages: syllabus, assessment, per-lecture specifications).
+course module document: syllabus, assessment, and a specification for every lecture.
 
 ---
 
@@ -19,8 +22,8 @@ pip install -r requirements.txt
 # 2. generate the datasets — once, ~30 seconds, fully offline
 python tools/build_data.py
 
-# 3. open the first lab
-jupyter lab lectures/Lecture_01/notebooks/
+# 3. open the first lab (start at Lecture 0)
+jupyter lab lectures/Lecture_00/notebooks/
 ```
 
 That is the whole setup. **No downloads, no GPU, no API keys, no internet connection.**
@@ -29,9 +32,14 @@ reproducible byte for byte.
 
 ---
 
-## The 16 lectures
+## The lectures
 
-### Part I — Foundations
+### Part 0 — Machine Learning Foundations
+| # | Lecture | The idea |
+|---|---|---|
+| 00 | [Machine Learning Foundations](lectures/Lecture_00/) | What a model is, how it learns, how you know it worked |
+
+### Part I — Deep Learning Foundations
 | # | Lecture | The idea |
 |---|---|---|
 | 01 | [Deep Learning Foundations and the Image Data Pipeline](lectures/Lecture_01/) | Images as tensors; baselines before models |
@@ -71,11 +79,16 @@ reproducible byte for byte.
 lectures/Lecture_NN/
 ├── README.md              objectives, outline, teaching notes, timing
 ├── slides/*.pptx          16:9 deck, ready to present
-├── notebooks/*.ipynb      the lab — runs top to bottom on CPU
-├── tasks/*_Tasks.md       core + stretch tasks, with the marking rubric
+├── notebooks/*.ipynb      the lab — and every task, marked 📝 TODO
+├── tasks/*_Tasks.md       the same tasks as a printable sheet, plus the rubric
 ├── data/README.md         which datasets this lecture uses, and how to load them
-└── app/                   FastAPI service (Lectures 9 and 16)
+└── app/                   FastAPI service (Lectures 9 and 16 only)
 ```
+
+**Students work entirely in the notebook.** Every task appears as a 📝 TODO cell in the
+section it belongs to, with an empty cell underneath for the answer. The notebook is
+also what gets submitted. The task sheet is a printable copy of the same briefs plus the
+marking rubric — nothing extra to chase.
 
 ## Teaching approach
 
@@ -125,12 +138,13 @@ them.
 
 ```bash
 python tools/build_data.py                 # datasets
-python tools/build_slides.py               # 16 decks, 296 slides
+python tools/build_slides.py               # 17 decks
 python tools/lint_slides.py                # geometry and text-fit checks
-python tools/build_notebooks.py            # 16 notebooks
+python tools/build_notebooks.py            # 17 notebooks
 python tools/build_notebooks.py --run      # ...and execute every one to prove it runs
 python tools/build_tasks.py                # task sheets and READMEs
 python tools/build_pdf.py                  # the course module PDF
+python tools/verify_course.py              # check every promised artefact exists
 ```
 
 `--run` executes every notebook end to end and fails the build if any cell raises. The
@@ -144,7 +158,7 @@ shipped notebooks are output-free so students run them fresh; executed copies la
 - Cells taking more than ~1 minute on a laptop are marked. Reduce the epoch count in
   class; students run the full version later.
 - Suggested rhythm: 2 h lecture, 1 h supervised lab, 4–6 h independent work.
-- Insist on the running `results.md` table from Lecture 1. It is the most useful thing
+- Insist on the running `results.md` table from Lecture 0. It is the most useful thing
   students produce.
 
 ## Licence and attribution

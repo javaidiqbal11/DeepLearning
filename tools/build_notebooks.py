@@ -1,7 +1,7 @@
 """Assemble every lecture notebook, and optionally execute it to prove it runs.
 
     python tools/build_notebooks.py                 # build all
-    python tools/build_notebooks.py 5 6             # build lectures 5 and 6
+    python tools/build_notebooks.py 0 5             # build lectures 0 and 5
     python tools/build_notebooks.py --run 5         # build and execute lecture 5
 """
 from __future__ import annotations
@@ -71,11 +71,11 @@ def execute(path: Path, timeout: int = 2400) -> tuple[bool, str, float]:
 def main(argv):
     run = "--run" in argv
     argv = [a for a in argv if a != "--run"]
-    wanted = [int(a) for a in argv] if argv else list(range(1, 17))
+    wanted = [int(a) for a in argv] if argv else list(range(0, 17))
 
     failures = []
     for n in wanted:
-        lec = LECTURES[n - 1]
+        lec = LECTURES[n]
         try:
             path = build_one(lec)
         except ModuleNotFoundError:

@@ -36,19 +36,28 @@ def header(lec) -> list:
 
         ---
 
-        ### How to work through this
+        ### How to use this notebook
 
-        Run the cells in order. Sections match the lecture slides. Cells marked
-        **`TODO`** are the ones you complete for the task sheet in
-        `../tasks/Lecture_{n:02d}_Tasks.md` — everything else is worked for you and is
-        there to be read, not skimmed.
+        **This notebook is your workbook and your submission.** Everything you need is
+        here — you do not need to open any other file.
 
-        Nothing here needs a GPU. If a cell is slow on your machine, reduce `EPOCHS`
-        at the top of the section and say so in your write-up.
+        1. Run the cells in order, top to bottom. The sections match the lecture slides.
+        2. Worked cells are there to be **read**, not skimmed. They build the ideas the
+           tasks assume.
+        3. Cells marked **📝 TODO** are yours. Write your code in the empty cell
+           underneath, and your written answer in a markdown cell after that.
+        4. When you are done, restart the kernel and run everything once more to check it
+           works from clean.
+
+        Nothing here needs a GPU. If a cell is slow on your machine, reduce the epoch
+        count at the top of that section and say so in your write-up.
+
+        *(A printable copy of the tasks and the marking rubric is in
+        `../tasks/Lecture_{n:02d}_Tasks.md`, but the work itself belongs here.)*
         """),
         code(f"""
         # --- setup: make the repository root importable -------------------------
-        import sys, pathlib
+        import os, sys, pathlib
 
         ROOT = pathlib.Path.cwd()
         while not (ROOT / "dlcourse").exists() and ROOT != ROOT.parent:
@@ -69,7 +78,9 @@ def header(lec) -> list:
                               show_boxes, show_masks)
 
         set_seed(0)
-        torch.set_num_threads(4)
+        # Leave a core or two for the rest of the machine. More threads than cores
+        # makes training slower, not faster.
+        torch.set_num_threads(max(1, min(4, (os.cpu_count() or 4) - 1)))
         DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         print("repo root :", ROOT)
@@ -80,20 +91,25 @@ def header(lec) -> list:
 
 
 def todo(number: str, title: str, body: str) -> nbf.NotebookNode:
-    """A task cell: states what the student must do and where it goes."""
+    """A task cell: the complete brief, so the notebook stands on its own."""
+    body = textwrap.dedent(body).strip()
+    indented = "\n    ".join(body.splitlines())
     return md(f"""
     ---
-    ### 📝 TODO — Task {number}: {title}
 
-    {textwrap.dedent(body).strip()}
+    ## 📝 TODO — Task {number}: {title}
 
-    *Write your solution in the cell below, and your explanation in a markdown cell after it.*
+    {indented}
+
+    **Deliverable:** working code in the cell below, plus the number, table or plot the
+    task asks for. Where you are asked to explain something, add a markdown cell
+    underneath and answer in two or three sentences.
     """)
 
 
 def todo_cell(hint: str = "") -> nbf.NotebookNode:
     return code(f"""
-    # Your solution here.
+    # ---- YOUR SOLUTION ----
     {hint}
     """)
 
@@ -108,25 +124,36 @@ def section(title: str, blurb: str = "") -> nbf.NotebookNode:
 def footer(lec) -> list:
     n = lec["number"]
     core = [t for t in lec["tasks"] if t[0] == "core"]
-    lines = "\n".join(f"{i}. **{t[1]}** — {t[2]}" for i, t in enumerate(core, start=1))
+    stretch = [t for t in lec["tasks"] if t[0] == "stretch"]
+    core_lines = "\n        ".join(
+        f"- [ ] **Task {i}** — {t[1]}" for i, t in enumerate(core, start=1))
+    stretch_lines = "\n        ".join(
+        f"- [ ] *Stretch {i}* — {t[1]}" for i, t in enumerate(stretch, start=1))
     return [
         md(f"""
         ---
 
-        ## Your tasks
+        ## Checklist before you submit
 
-        The full brief, including the stretch tasks and the marking rubric, is in
-        `../tasks/Lecture_{n:02d}_Tasks.md`. The core tasks are:
+        All {len(core)} core tasks are required. Each is marked **📝 TODO** above, in the
+        section it belongs to.
 
-        {lines}
+        {core_lines}
 
-        ### Before you submit
+        Optional, not marked:
 
-        - Restart the kernel and run everything top to bottom. It must complete with no errors.
-        - Check `set_seed(0)` runs before anything random.
-        - Every plot needs axis labels and a title.
-        - Add this lecture's headline numbers to your running `results.md` table.
-        - Disclose any AI-assistant use in the cell below.
+        {stretch_lines}
+
+        ### Final checks
+
+        - [ ] Restart the kernel and **Run All**. It completes with no errors.
+        - [ ] `set_seed(0)` runs before anything random.
+        - [ ] Every plot has axis labels and a title.
+        - [ ] Written answers are in markdown cells, not in code comments.
+        - [ ] This lecture's headline numbers are in your running `results.md` table.
+        - [ ] AI-assistant use is disclosed in the cell below.
+
+        Submit this notebook as `LASTNAME_FIRSTNAME_L{n:02d}.ipynb`.
         """),
         md("""
         ### AI assistance disclosure

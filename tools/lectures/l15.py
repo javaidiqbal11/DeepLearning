@@ -45,13 +45,16 @@ def cells():
                 return self.decode(z), z
         """),
         code("""
-        # ~2 minutes.
+        # ~1 minute.
         from torch.utils.data import TensorDataset, DataLoader
 
         set_seed(0)
         ae = Autoencoder(latent=2)
         opt = torch.optim.Adam(ae.parameters(), lr=2e-3)
-        loader = DataLoader(TensorDataset(X_train), batch_size=128, shuffle=True)
+        # Generative models here learn p(x), and 3000 images sample that distribution
+        # perfectly well. Halving the data halves every training cell in the lecture.
+        GEN_N = 3000
+        loader = DataLoader(TensorDataset(X_train[:GEN_N]), batch_size=128, shuffle=True)
 
         for epoch in range(12):
             ae.train(); total = 0.0
@@ -62,7 +65,7 @@ def cells():
                 loss.backward(); opt.step()
                 total += loss.item() * len(xb)
             if (epoch + 1) % 4 == 0:
-                print(f"epoch {epoch+1:2d}  MSE {total/len(X_train):.5f}")
+                print(f"epoch {epoch+1:2d}  MSE {total/GEN_N:.5f}")
         """),
         code("""
         ae.eval()
@@ -153,13 +156,13 @@ def cells():
             return rec + beta * kl, rec, kl
         """),
         code("""
-        # ~3 minutes.
+        # ~2 minutes.
         set_seed(0)
         vae = VAE(latent=8)
         opt = torch.optim.Adam(vae.parameters(), lr=1e-3)
         rec_curve, kl_curve = [], []
 
-        for epoch in range(20):
+        for epoch in range(15):
             vae.train(); r_tot = k_tot = 0.0
             for (xb,) in loader:
                 opt.zero_grad()
@@ -167,7 +170,7 @@ def cells():
                 loss, rec, kl = vae_loss(recon, xb, mu, logvar)
                 loss.backward(); opt.step()
                 r_tot += rec.item() * len(xb); k_tot += kl.item() * len(xb)
-            rec_curve.append(r_tot / len(X_train)); kl_curve.append(k_tot / len(X_train))
+            rec_curve.append(r_tot / GEN_N); kl_curve.append(k_tot / GEN_N)
             if (epoch + 1) % 5 == 0:
                 print(f"epoch {epoch+1:2d}  recon {rec_curve[-1]:8.2f}  KL {kl_curve[-1]:7.3f}")
         """),
@@ -212,13 +215,13 @@ def cells():
         """),
         code("""
         # beta-VAE: the reconstruction/KL trade-off, and where posterior collapse begins.
-        # ~4 minutes.
+        # ~2 minutes.
         beta_results = {}
         for beta in (0.5, 1.0, 4.0, 10.0):
             set_seed(0)
             v = VAE(latent=8)
             o = torch.optim.Adam(v.parameters(), lr=1e-3)
-            for _ in range(8):
+            for _ in range(5):
                 for (xb,) in loader:
                     o.zero_grad()
                     recon, mu, logvar = v(xb)
@@ -274,14 +277,14 @@ def cells():
                 return self.net(x)
         """),
         code("""
-        # ~6 minutes.
+        # ~4 minutes. The longest cell in this lecture.
         set_seed(0)
         G, D = Generator(), Discriminator()
         opt_g = torch.optim.Adam(G.parameters(), lr=2e-4, betas=(0.5, 0.999))
         opt_d = torch.optim.Adam(D.parameters(), lr=2e-4, betas=(0.5, 0.999))
         bce = nn.BCEWithLogitsLoss()
 
-        EPOCHS = 15
+        EPOCHS = 10
         fixed_z = torch.randn(32, G.z_dim)
         g_losses, d_losses, snapshots = [], [], {}
 
@@ -374,13 +377,13 @@ def cells():
         """),
         code("""
         # Now induce collapse deliberately: over-train the generator relative to D.
-        # ~3 minutes.
+        # ~2 minutes.
         set_seed(0)
         G_bad, D_bad = Generator(), Discriminator()
         opt_gb = torch.optim.Adam(G_bad.parameters(), lr=2e-3, betas=(0.5, 0.999))  # 10x too high
         opt_db = torch.optim.Adam(D_bad.parameters(), lr=1e-5, betas=(0.5, 0.999))  # crippled
 
-        for epoch in range(10):
+        for epoch in range(6):
             for (xb,) in loader:
                 bs = len(xb)
                 opt_db.zero_grad()
@@ -388,8 +391,8 @@ def cells():
                 (bce(D_bad(xb), torch.ones(bs, 1))
                  + bce(D_bad(fake.detach()), torch.zeros(bs, 1))).backward()
                 opt_db.step()
-                # Five generator steps per discriminator step.
-                for _ in range(5):
+                # Three generator steps per discriminator step.
+                for _ in range(3):
                     opt_gb.zero_grad()
                     f = G_bad(torch.randn(bs, G_bad.z_dim))
                     bce(D_bad(f), torch.ones(bs, 1)).backward()
@@ -515,13 +518,13 @@ def cells():
         print(f"parameters: {count_parameters(unet):,}")
         """),
         code("""
-        # ~6 minutes. The training objective is simply MSE on the noise.
+        # ~4 minutes. The training objective is simply MSE on the noise.
         set_seed(0)
         unet = TinyUNet()
         opt = torch.optim.Adam(unet.parameters(), lr=2e-3)
         diff_losses = []
 
-        for epoch in range(20):
+        for epoch in range(15):
             unet.train(); total = 0.0
             for (xb,) in loader:
                 t = torch.randint(0, T, (len(xb),))
@@ -530,7 +533,7 @@ def cells():
                 loss = F.mse_loss(unet(noisy, t), noise)
                 loss.backward(); opt.step()
                 total += loss.item() * len(xb)
-            diff_losses.append(total / len(X_train))
+            diff_losses.append(total / GEN_N)
             if (epoch + 1) % 5 == 0:
                 print(f"epoch {epoch+1:2d}  noise-prediction MSE {diff_losses[-1]:.5f}")
 
@@ -573,13 +576,9 @@ def cells():
         plt.tight_layout(); plt.show()
         """),
         code("""
-        hist = class_histogram(type("W", (), {"z_dim": 0, "eval": lambda s: None,
-                                              "train": lambda s: None})()) \\
-               if False else None
-
-        # Judge the diffusion samples the same way.
+        # Judge the diffusion samples the same way we judged the GAN's.
         with torch.no_grad():
-            big, _ = sample_ddpm(unet, n=64)
+            big, _ = sample_ddpm(unet, n=32)
             judged = judge(big.clamp(0, 1)).argmax(1)
         dist = torch.bincount(judged, minlength=4).float() / len(judged)
 

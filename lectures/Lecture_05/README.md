@@ -31,7 +31,7 @@ Part II - Convolutional Vision · DL-601 Deep Learning
 
 ## The lab
 
-Implement conv2d with im2col and max pooling from scratch and match torch.nn.functional to 1e-5; apply hand-built edge kernels to see what convolution does; build and train a CNN on shapes to roughly 99%, beating the linear baseline from Lecture 1 by ~35 points; then visualise the learned first-layer filters.
+Implement conv2d with im2col and max pooling from scratch and match torch.nn.functional to 1e-5; apply hand-built edge kernels to see what convolution does; train a CNN to ~99% and compare it against an MLP on accuracy, parameter count and — the decisive test — accuracy on translated images; then visualise the learned first-layer filters and measure the receptive field.
 
 **Data:** `shapes_32.npz`
 

@@ -94,7 +94,7 @@ Reproduce the Adebayo et al. model-randomisation test: compare saliency from a t
 - [ ] Every core task is answered, in order, under its own heading.
 - [ ] Every plot has axis labels and a title.
 - [ ] Written answers are in markdown cells, not in code comments.
-- [ ] Results added to your running `results.md` table (carried across all 16 lectures).
+- [ ] Results added to your running `results.md` table (carried across every lecture).
 - [ ] Any AI-assistant use is disclosed in a short note at the end of the notebook.
 
 Submit as: `LASTNAME_FIRSTNAME_L08.ipynb`

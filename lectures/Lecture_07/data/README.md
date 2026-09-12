@@ -1,7 +1,9 @@
 # Data for Lecture 07
 
-All datasets live in the repository-level `data/` folder and are generated offline by
-`python tools/build_data.py`. Nothing is downloaded and no internet connection is needed.
+Course datasets live in the repository-level `data/` folder and are generated
+offline by `python tools/build_data.py`. A few lectures also use datasets that
+ship inside scikit-learn. Either way nothing is downloaded and no internet
+connection is needed.
 
 ## Used in this lecture
 

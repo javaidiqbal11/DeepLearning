@@ -26,16 +26,30 @@ def _require(name: str) -> Path:
     return p
 
 
-def to_nchw(x: np.ndarray) -> torch.Tensor:
-    """uint8 NHWC array -> float32 NCHW tensor scaled to [0, 1]."""
-    t = torch.from_numpy(np.ascontiguousarray(x))
-    if t.ndim == 3:          # grayscale NHW
-        t = t.unsqueeze(1).float()
+def to_nchw(x) -> torch.Tensor:
+    """Return a float32 NCHW tensor in [0, 1], whatever layout you hand it.
+
+    Accepts NHWC (how the generated datasets are stored), NHW grayscale, or
+    data that is already NCHW. Detecting the layout rather than assuming it
+    matters: silently permuting an NCHW batch produces a tensor of the wrong
+    shape that only fails several layers into the model, if at all.
+    """
+    t = x if isinstance(x, torch.Tensor) else torch.from_numpy(np.ascontiguousarray(x))
+
+    if t.ndim == 3:                      # N, H, W  -> add the channel axis
+        t = t.unsqueeze(1)
+    elif t.ndim == 4:
+        channels_last = t.shape[-1] in (1, 3) and t.shape[1] not in (1, 3)
+        if channels_last:
+            t = t.permute(0, 3, 1, 2)
+        # otherwise it is already N, C, H, W and needs no reordering
     else:
-        t = t.permute(0, 3, 1, 2).float()
-    if t.dtype == torch.float32 and t.max() > 1.5:
+        raise ValueError(f"expected a 3D or 4D batch, got shape {tuple(t.shape)}")
+
+    t = t.float()
+    if t.max() > 1.5:                    # uint8-valued data
         t = t / 255.0
-    return t
+    return t.contiguous()
 
 
 class ArrayImageDataset(Dataset):

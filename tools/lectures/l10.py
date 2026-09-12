@@ -159,6 +159,14 @@ def cells():
                     g = torch.exp(-((xx - cx) ** 2 + (yy - cy) ** 2) / (2 * sigma ** 2))
                     heat[i, label] = torch.maximum(heat[i, label], g)
 
+                    # The centre cell must be EXACTLY 1.0. The Gaussian is evaluated at
+                    # integer grid coordinates but the true centre is continuous, so its
+                    # peak lands at 0.9999-something. The focal loss below selects
+                    # positives with `target == 1`, and with no exact 1.0 anywhere it
+                    # finds none, trains on background only, and predicts nothing --
+                    # while reporting a perfectly healthy-looking loss curve.
+                    heat[i, label, gy, gx] = 1.0
+
                     size[i, 0, gy, gx] = (x2 - x1) / stride
                     size[i, 1, gy, gx] = (y2 - y1) / stride
                     mask[i, 0, gy, gx] = 1.0
@@ -167,6 +175,18 @@ def cells():
         heat_demo, size_demo, mask_demo = make_targets(ann_train[:4])
         print("heatmap:", tuple(heat_demo.shape), " size:", tuple(size_demo.shape))
         print("objects in these 4 scenes:", int(mask_demo.sum()))
+        print("exact-1.0 peaks in the target:", int(heat_demo.eq(1).sum()),
+              " <- must equal the object count")
+        """),
+        md("""
+        > **A bug worth remembering.** The line setting the centre cell to exactly `1.0`
+        > looks like a rounding detail. Remove it and this detector trains to completion,
+        > reports a falling loss, and predicts **nothing at all** — because the focal loss
+        > below picks its positive examples with `target == 1`, and a Gaussian evaluated at
+        > integer coordinates never quite reaches 1.
+        >
+        > No exception, no warning, a plausible loss curve, and a completely dead model.
+        > This is exactly the class of bug the Lecture 8 debugging protocol is for.
         """),
         code("""
         fig, axes = plt.subplots(2, 4, figsize=(13, 6))
@@ -181,18 +201,19 @@ def cells():
         class CentreNet(nn.Module):
             \"\"\"Backbone at stride 4, with a classification head and a size head.\"\"\"
 
-            def __init__(self, n_classes=N_CLASSES, width=32):
+            def __init__(self, n_classes=N_CLASSES, width=24):
                 super().__init__()
                 def block(cin, cout, stride=1):
                     return nn.Sequential(
                         nn.Conv2d(cin, cout, 3, stride=stride, padding=1, bias=False),
                         nn.BatchNorm2d(cout), nn.ReLU())
 
+                # Downsample to the output stride first, then do the expensive work
+                # at 24x24. Same output resolution as convolving at 96x96 throughout,
+                # but ~3x faster -- worth knowing as a general design habit.
                 self.backbone = nn.Sequential(
-                    block(3, width),                    # 96
-                    block(width, width, stride=2),      # 48
-                    block(width, width * 2),
-                    block(width * 2, width * 2, stride=2),   # 24
+                    block(3, width, stride=2),               # 96 -> 48
+                    block(width, width * 2, stride=2),       # 48 -> 24
                     block(width * 2, width * 2),
                     block(width * 2, width * 2),
                 )
@@ -253,10 +274,17 @@ def cells():
         X_va = to_nchw(X_val_np)
         heat_tr, size_tr, mask_tr = make_targets(ann_train)
         heat_va, size_va, mask_va = make_targets(ann_val)
+
+        n_objects = sum(len(a['boxes']) for a in ann_train)
+        n_peaks = int(heat_tr.eq(1).sum())
+        assert n_peaks == n_objects, (
+            f"{n_peaks} exact peaks but {n_objects} objects -- the focal loss would "
+            "see the wrong number of positives")
         print("targets built:", tuple(heat_tr.shape))
+        print(f"{n_peaks} exact-1.0 peaks for {n_objects} objects -- matches")
         """),
         code("""
-        # ~4 minutes.
+        # ~3 minutes. This is the longest cell in the lecture.
         from torch.utils.data import TensorDataset, DataLoader
 
         set_seed(0)
@@ -265,7 +293,7 @@ def cells():
         loader = DataLoader(TensorDataset(X_tr, heat_tr, size_tr, mask_tr),
                             batch_size=32, shuffle=True)
 
-        EPOCHS = 12
+        EPOCHS = 8
         history = []
         for epoch in range(EPOCHS):
             detector.train()

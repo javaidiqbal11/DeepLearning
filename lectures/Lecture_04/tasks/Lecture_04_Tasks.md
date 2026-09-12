@@ -88,7 +88,7 @@ Train at batch sizes 8, 64, 512 and 4096 with the learning rate scaled linearly.
 - [ ] Every core task is answered, in order, under its own heading.
 - [ ] Every plot has axis labels and a title.
 - [ ] Written answers are in markdown cells, not in code comments.
-- [ ] Results added to your running `results.md` table (carried across all 16 lectures).
+- [ ] Results added to your running `results.md` table (carried across every lecture).
 - [ ] Any AI-assistant use is disclosed in a short note at the end of the notebook.
 
 Submit as: `LASTNAME_FIRSTNAME_L04.ipynb`

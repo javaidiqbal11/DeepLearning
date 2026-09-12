@@ -11,7 +11,7 @@ from course_spec import COURSE, LECTURES, PARTS, folder_name, slug  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "Deep_Learning_Course_Module.pdf"
 
-PART_COLOURS = {1: "#1f6fb2", 2: "#1b866b", 3: "#c16a1c", 4: "#7a3ea8"}
+PART_COLOURS = {0: "#4a5265", 1: "#1f6fb2", 2: "#1b866b", 3: "#c16a1c", 4: "#7a3ea8"}
 
 CSS = """
 @page {
@@ -116,6 +116,9 @@ def md_reading(text: str) -> str:
 
 
 def cover() -> str:
+    n_lectures = len(LECTURES)
+    n_core = sum(1 for l in LECTURES for t in l["tasks"] if t[0] == "core")
+    n_stretch = sum(1 for l in LECTURES for t in l["tasks"] if t[0] == "stretch")
     return f"""
     <div class="cover">
       <div class="code">{esc(COURSE['code'])}</div>
@@ -128,7 +131,8 @@ def cover() -> str:
         <p><strong>Instructor:</strong> {esc(COURSE['instructor'])}</p>
       </div>
       <div class="footer">
-        16 lectures · 16 slide decks · 16 hands-on notebooks · 126 graded tasks<br>
+        {n_lectures} lectures (0-16) · {n_lectures} slide decks · {n_lectures} hands-on
+        notebooks · {n_core} core tasks + {n_stretch} stretch<br>
         Every notebook runs end to end on a CPU laptop. No downloads, no GPU, no API keys.
       </div>
     </div>
@@ -139,14 +143,16 @@ def overview() -> str:
     parts = []
     add = parts.append
     add('<div class="page-break"><h1 class="section">1. Course overview</h1>')
-    add("<p>This module takes a student with no deep learning background to the point of "
-        "building, diagnosing and deploying modern neural networks. The emphasis is on "
-        "images, with text introduced where it is needed to motivate sequence models and "
-        "attention, and a deployment thread running through the whole course.</p>")
+    add("<p>This module takes a student with <strong>no machine learning background at all</strong> to the point of building, diagnosing and deploying modern neural networks. "
+        "Lecture 0 is a self-contained primer on classical machine learning; Lectures 1 to 16 "
+        "are deep learning. The emphasis is on images, with text introduced where it is needed "
+        "to motivate sequence models and attention, and a deployment thread running through "
+        "the whole course.</p>")
 
     add("<p>Curriculum design follows the consensus structure of Stanford CS231n, "
         "NYU DS-GA 1008 (LeCun and Canziani) and the deeplearning.ai Deep Learning "
-        "Specialization, re-sequenced for a 16-session semester and extended with the "
+        "Specialization, re-sequenced for a 16-session semester, prefaced with a machine "
+            "learning primer, and extended with the "
         "production engineering those courses leave out.</p>")
 
     add('<div class="callout"><strong>What makes this module different:</strong> every '
@@ -173,12 +179,13 @@ def overview() -> str:
     add("<h3>Structure</h3>")
     add("<table><tr><th>Part</th><th>Lectures</th><th>Focus</th></tr>")
     focus = {
+        0: "Machine learning from zero: features, splits, overfitting, metrics. No deep learning yet.",
         1: "Tensors, linear models, backpropagation, optimisation. Everything built by hand.",
         2: "Convolution, ResNets, transfer learning, augmentation, evaluation and interpretability.",
         3: "Deployment with FastAPI, then detection, segmentation and sequence models.",
         4: "Attention, Vision Transformers, self-supervision, generative models, production systems.",
     }
-    for p in (1, 2, 3, 4):
+    for p in (0, 1, 2, 3, 4):
         nums = [l["number"] for l in LECTURES if l["part"] == p]
         parts.append(f"<tr><td><strong>{esc(PARTS[p])}</strong></td>"
                      f"<td class='num'>{nums[0]}–{nums[-1]}</td>"

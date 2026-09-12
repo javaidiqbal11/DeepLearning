@@ -10,10 +10,24 @@ def cells():
         """),
         code("""
         seg = load_segmentation()
-        X_train, M_train = seg["train"]
-        X_val,   M_val   = seg["val"]
         SEG_CLASSES = seg["classes"]
         N_CLASSES = len(SEG_CLASSES)
+
+        # The scenes are 96x96. We work at 48x48 and on a subset of them, because this
+        # lecture trains three separate U-Nets to compare losses and run an ablation,
+        # and CPU time is the binding constraint. The shapes stay perfectly legible, and
+        # every conclusion below holds at full resolution -- it just takes 4x longer.
+        SIZE, N_TRAIN = 48, 1200
+
+        def resize(X, M, size=SIZE):
+            X = F.interpolate(X, size=(size, size), mode="bilinear", align_corners=False)
+            M = F.interpolate(M.unsqueeze(1).float(), size=(size, size),
+                              mode="nearest").squeeze(1).long()
+            return X, M
+
+        X_train, M_train = resize(*seg["train"])
+        X_val,   M_val   = resize(*seg["val"])
+        X_train, M_train = X_train[:N_TRAIN], M_train[:N_TRAIN]
 
         print("images:", tuple(X_train.shape))
         print("masks :", tuple(M_train.shape), " values:", M_train.unique().tolist())
@@ -49,15 +63,16 @@ def cells():
         """),
         code("""
         mask_1 = M_train[0:1].float().unsqueeze(1)
+        S = SIZE
         fig, axes = plt.subplots(1, 5, figsize=(15, 3.2))
         axes[0].imshow(M_train[0], cmap="tab10", vmin=0, vmax=N_CLASSES-1)
-        axes[0].set_title("original 96x96", fontsize=10); axes[0].axis("off")
+        axes[0].set_title(f"original {S}x{S}", fontsize=10); axes[0].axis("off")
 
         for ax, factor in zip(axes[1:], [2, 4, 8, 16]):
             small = F.interpolate(mask_1, scale_factor=1/factor, mode="nearest")
-            back = F.interpolate(small, size=(96, 96), mode="nearest")
+            back = F.interpolate(small, size=(S, S), mode="nearest")
             ax.imshow(back[0, 0], cmap="tab10", vmin=0, vmax=N_CLASSES-1)
-            ax.set_title(f"1/{factor} then back up\\n({96//factor}x{96//factor})", fontsize=10)
+            ax.set_title(f"1/{factor} then back up\\n({S//factor}x{S//factor})", fontsize=10)
             ax.axis("off")
         fig.suptitle("What resolution loss costs you — boundaries are the first casualty")
         plt.tight_layout(); plt.show()
@@ -122,13 +137,15 @@ def cells():
             def __init__(self, n_classes=N_CLASSES, base=16, use_skip=True):
                 super().__init__()
                 b = base
-                self.inc = DoubleConv(3, b)          # 96
-                self.d1 = Down(b, b * 2)             # 48
-                self.d2 = Down(b * 2, b * 4)         # 24
-                self.d3 = Down(b * 4, b * 8)         # 12  (bottleneck)
-                self.u1 = Up(b * 8, b * 4, b * 4, use_skip)   # 24
-                self.u2 = Up(b * 4, b * 2, b * 2, use_skip)   # 48
-                self.u3 = Up(b * 2, b, b, use_skip)           # 96
+                # Encoder: three downsamples, so S -> S/2 -> S/4 -> S/8.
+                self.inc = DoubleConv(3, b)
+                self.d1 = Down(b, b * 2)
+                self.d2 = Down(b * 2, b * 4)
+                self.d3 = Down(b * 4, b * 8)                  # bottleneck
+                # Decoder: three upsamples back to S, each fed by its encoder skip.
+                self.u1 = Up(b * 8, b * 4, b * 4, use_skip)
+                self.u2 = Up(b * 4, b * 2, b * 2, use_skip)
+                self.u3 = Up(b * 2, b, b, use_skip)
                 self.outc = nn.Conv2d(b, n_classes, 1)
 
             def forward(self, x):
@@ -142,8 +159,8 @@ def cells():
                 return self.outc(y)
 
         net = UNet()
-        out = net(torch.randn(2, 3, 96, 96))
-        print("input (2, 3, 96, 96) -> output", tuple(out.shape))
+        out = net(torch.randn(2, 3, SIZE, SIZE))
+        print(f"input (2, 3, {SIZE}, {SIZE}) -> output", tuple(out.shape))
         print(f"parameters: {count_parameters(net):,}")
         print("\\nInput and output spatial size match — required for dense prediction.")
         """),
@@ -234,18 +251,21 @@ def cells():
             return model, curve
         """),
         code("""
-        # ~6 minutes for all three. Reduce `epochs` if that is too slow.
+        # ~7 minutes for both. This is the longest cell in the course -- two U-Nets
+        # trained from scratch. Lower EPOCHS if you need it faster; the ordering of
+        # the results holds at 6 epochs, the absolute numbers are just lower.
         EPOCHS = 10
         models, curves, metrics = {}, {}, {}
 
         for name, fn in [("cross-entropy", F.cross_entropy),
-                         ("dice", dice_loss),
                          ("CE + dice", combined_loss)]:
             m, c = train_segmenter(fn, epochs=EPOCHS)
             models[name], curves[name] = m, c
             metrics[name] = segmentation_metrics(m, X_val, M_val)
             print(f"{name:<15} mIoU {metrics[name]['miou']:.4f}   "
                   f"mDice {metrics[name]['mdice']:.4f}")
+
+        print("\\nTask 4 asks you to add pure Dice loss as a third row.")
         """),
         code("""
         report(metrics["CE + dice"], "CE + Dice — per-class results")
@@ -258,10 +278,11 @@ def cells():
         a1.set_title("Training loss (different scales — compare shape, not height)")
         a1.legend(); a1.grid(alpha=.3)
 
-        width = 0.25
+        width = 0.8 / max(len(metrics), 1)
         x = np.arange(N_CLASSES)
+        offset = (len(metrics) - 1) / 2
         for i, (name, m) in enumerate(metrics.items()):
-            a2.bar(x + (i - 1) * width, m["iou"].numpy(), width, label=name)
+            a2.bar(x + (i - offset) * width, m["iou"].numpy(), width, label=name)
         a2.set_xticks(x, SEG_CLASSES, rotation=20)
         a2.set_ylabel("IoU"); a2.set_title("Per-class IoU by loss function")
         a2.legend(fontsize=9); a2.grid(alpha=.3, axis="y")
@@ -281,7 +302,7 @@ def cells():
         in the image — and loses the boundaries.
         """),
         code("""
-        # ~2 minutes.
+        # ~1 minute.
         no_skip, _ = train_segmenter(combined_loss, epochs=EPOCHS, use_skip=False)
         m_no_skip = segmentation_metrics(no_skip, X_val, M_val)
         m_skip = metrics["CE + dice"]
@@ -321,27 +342,28 @@ def cells():
         the side. That is the entire design.
         """),
         section("8. Class weighting for the rare classes", """
-        Inverse-frequency weights make cross-entropy pay attention to the classes that
-        occupy few pixels.
+        Cross-entropy counts every pixel equally, so background -- 91% of the pixels --
+        dominates the gradient. Inverse-frequency weights rebalance it.
+
+        The weights are computed below. Training the weighted model and measuring what
+        it changes is **Task 6**: this lecture already trains two U-Nets from scratch,
+        and a third belongs in your own run rather than in the worked text.
         """),
         code("""
-        # ~2 minutes.
-        weighted_ce = lambda logits, target: F.cross_entropy(logits, target, weight=weights)
-        weighted_model, _ = train_segmenter(weighted_ce, epochs=EPOCHS)
-        m_weighted = segmentation_metrics(weighted_model, X_val, M_val)
+        # The weights you will use in Task 6, ready to pass straight to cross_entropy.
+        print(f"{'class':<14}{'pixel fraction':>16}{'weight':>10}")
+        print("-" * 40)
+        for name, f, w in zip(SEG_CLASSES, fractions, weights):
+            print(f"{name:<14}{f:>16.4f}{w:>10.3f}")
 
-        plain = metrics["cross-entropy"]
-        print(f"{'class':<14}{'plain CE':>10}{'weighted':>10}{'change':>10}")
-        print("-" * 44)
-        for i, name in enumerate(SEG_CLASSES):
-            a, b = plain["iou"][i].item(), m_weighted["iou"][i].item()
-            print(f"{name:<14}{a:>10.4f}{b:>10.4f}{b - a:>+10.4f}")
-        print(f"{'mIoU':<14}{plain['miou']:>10.4f}{m_weighted['miou']:>10.4f}"
-              f"{m_weighted['miou'] - plain['miou']:>+10.4f}")
+        print("\\nbackground is", f"{fractions[0] / fractions[-1]:.0f}x",
+              "more common than the rarest shape, so it gets",
+              f"{weights[0] / weights[-1]:.3f}x", "the weight.")
+        print("\\nTask 6: train with these weights and report the change in per-class IoU.")
         """),
         todo("1", "U-Net implementation", """
         Implement `DoubleConv`, `Down`, `Up` and `OutConv` blocks and assemble a U-Net with
-        depth 3. Verify that input and output spatial dimensions match for a 96x96 input.
+        depth 3. Verify that input and output spatial dimensions match.
         """),
         todo_cell(),
         todo("2", "Train and visualise", """

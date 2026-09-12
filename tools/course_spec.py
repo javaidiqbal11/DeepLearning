@@ -15,14 +15,14 @@ COURSE = {
     "title": "Deep Learning",
     "subtitle": "Foundations, Computer Vision and Production Systems",
     "level": "Graduate (Master's / first-year PhD)",
-    "credits": "3 credit hours - 16 lectures x 3 hours (2h lecture + 1h lab)",
+    "credits": "3 credit hours - Lecture 0 primer + 16 lectures x 3 hours (2h lecture + 1h lab)",
     "instructor": "Senior AI Engineer, Course Instructor",
     "prerequisites": [
         "Linear algebra: matrices, matrix products, eigenvalues",
         "Multivariable calculus: partial derivatives and the chain rule",
         "Probability: random variables, expectation, maximum likelihood",
         "Python: comfortable with functions, classes, NumPy arrays",
-        "No prior deep learning experience assumed",
+        "No prior machine learning experience assumed - Lecture 0 covers what you need",
     ],
     "stack": [
         "Python 3.10+",
@@ -42,8 +42,8 @@ COURSE = {
         "Evaluate a model for robustness, calibration and fairness before release.",
     ],
     "assessment": [
-        ("Weekly lab tasks (16 x 1.5%)", "24%", "Graded on completion and correctness of the core tasks."),
-        ("Assignment 1 - Foundations (Lectures 1-4)", "12%", "Backpropagation from scratch and an MLP training study."),
+        ("Lab tasks (17 notebooks)", "24%", "The TODO cells in each lecture notebook. Graded on completion and correctness."),
+        ("Assignment 1 - Foundations (Lectures 0-4)", "12%", "Backpropagation from scratch and an MLP training study."),
         ("Assignment 2 - Convolutional Vision (Lectures 5-8)", "14%", "CNN design, transfer learning and error analysis."),
         ("Assignment 3 - Sequences and Attention (Lectures 10-14)", "14%", "Detection or segmentation plus a Transformer built from scratch."),
         ("Capstone project (Lectures 15-16)", "26%", "End-to-end system: data, training, evaluation, FastAPI service, report."),
@@ -65,6 +65,7 @@ COURSE = {
 }
 
 PARTS = {
+    0: "Part 0 - Machine Learning Foundations",
     1: "Part I - Foundations",
     2: "Part II - Convolutional Vision",
     3: "Part III - Vision Systems and Deployment",
@@ -85,6 +86,126 @@ LECTURES: list[dict] = []
 
 def lecture(**kw):
     LECTURES.append(kw)
+
+
+lecture(
+    number=0, part=0,
+    title="Machine Learning Foundations",
+    tagline="What a model is, how it learns, and how you know it worked.",
+    objectives=[
+        "Define machine learning, and say when it is the right tool and when it is not.",
+        "Explain features and labels, and the difference between supervised and unsupervised learning.",
+        "Split data correctly, and explain why the test set is touched exactly once.",
+        "Recognise underfitting and overfitting, and describe the bias-variance trade-off.",
+        "Train and evaluate a classifier with scikit-learn, and read its confusion matrix.",
+    ],
+    outline=[
+        ("What machine learning is", [
+            "Traditional programming: you write the rules, the computer applies them.",
+            "Machine learning: you supply examples, and the computer works out the rules.",
+            "Use it when real rules exist but are too complex to write down - recognising a cat, say.",
+            "Do not use it when a simple rule works, when you have no data, or when being "
+            "occasionally wrong is unacceptable.",
+        ]),
+        ("The three kinds of learning", [
+            "Supervised: learn from labelled examples. Classification asks which class, "
+            "regression asks how much.",
+            "Unsupervised: find structure in unlabelled data - clustering, dimensionality reduction.",
+            "Reinforcement: learn from rewards by acting in an environment.",
+            "This course is almost entirely supervised learning, which is where deep learning "
+            "works best.",
+        ]),
+        ("Features, labels and the dataset", [
+            "A dataset is a table: one row per example, one column per feature, plus a label column.",
+            "X is the feature matrix with shape (n_samples, n_features); y is the label vector.",
+            "Classical ML needs features designed by hand. Deep learning learns them - that is "
+            "the whole difference.",
+            "No algorithm recovers from features that do not carry the signal.",
+        ]),
+        ("How a model actually learns", [
+            "A model is a function with adjustable numbers inside it, called parameters.",
+            "A loss function scores how wrong the current predictions are.",
+            "Training means adjusting the parameters until the loss is small.",
+            "Gradient descent does that by repeatedly stepping downhill on the loss. Everything "
+            "in this course is a variation on that one idea.",
+        ]),
+        ("Train, validation and test", [
+            "Train fits the parameters. Validation selects hyper-parameters. Test is touched once.",
+            "Evaluating on training data measures memorisation, not learning.",
+            "Data leakage is any information crossing from test into training, and it silently "
+            "inflates every number you report.",
+            "If you tune against the test set, it stops being a test set.",
+        ]),
+        ("Underfitting, overfitting and the trade-off", [
+            "Underfitting: the model is too simple. Both training and test scores are poor.",
+            "Overfitting: the model memorises the training data. Training score high, test score poor.",
+            "Bias is error from wrong assumptions; variance is error from sensitivity to the "
+            "particular sample you trained on.",
+            "More capacity lowers bias and raises variance. Finding the balance is the job.",
+        ]),
+        ("Measuring success honestly", [
+            "Accuracy is the fraction correct, and it is useless when the classes are imbalanced.",
+            "Precision: of what you flagged, how much was right. Recall: of what was there, "
+            "how much you found.",
+            "F1 combines the two; the confusion matrix shows exactly which classes get mixed up.",
+            "Always compare against a baseline - chance, or always predicting the majority class.",
+        ]),
+        ("From classical ML to deep learning", [
+            "Classical models do well on tabular data with good hand-designed features.",
+            "On raw pixels, audio or text they struggle, because the useful features are not "
+            "in the raw values.",
+            "Deep learning replaces feature engineering with feature learning, given enough data.",
+            "That is the bridge into Lecture 1, where the data becomes images.",
+        ]),
+    ],
+    lab="Walk the complete machine learning workflow on two small real datasets: load and "
+        "explore the data, split it honestly, train k-nearest neighbours, a decision tree and "
+        "logistic regression, compare them against a baseline, watch overfitting appear as "
+        "model complexity grows, read a confusion matrix, and finish by seeing where "
+        "hand-designed features run out on raw images - which is exactly why the rest of the "
+        "course exists.",
+    dataset="scikit-learn iris (bundled with the library), digits_8x8.npz",
+    tasks=[
+        ("core", "Explore a dataset",
+         "Load the iris dataset. Report the number of samples, the number of features, the "
+         "class names and the count per class. Plot two features against each other coloured "
+         "by class, and say in one sentence which pair separates the classes best."),
+        ("core", "Split the data honestly",
+         "Split into 60% train, 20% validation and 20% test using stratification. Verify the "
+         "class proportions are preserved in all three splits, and explain in one sentence why "
+         "stratification matters on a dataset this small."),
+        ("core", "Train three classifiers",
+         "Train k-nearest neighbours (k=5), a decision tree and logistic regression on the "
+         "training split. Report training and validation accuracy for each in a small table."),
+        ("core", "Beat the baseline",
+         "Compute the majority-class accuracy. State by how much each of your three models "
+         "beats it. A model that does not beat this baseline has learned nothing."),
+        ("core", "Make a model overfit on purpose",
+         "Train decision trees with max_depth from 1 to 15. Plot training and validation "
+         "accuracy against depth on one figure. Mark the depth where overfitting begins and "
+         "explain how you identified it."),
+        ("core", "Read a confusion matrix",
+         "Produce a confusion matrix for your best model on the test split. Name the two "
+         "classes it confuses most, and say why that is unsurprising given your plot from Task 1."),
+        ("core", "Where hand-designed features run out",
+         "Train logistic regression on the raw pixels of digits_8x8 and report test accuracy. "
+         "Then explain in three sentences why the same approach would break down on a "
+         "224x224 colour photograph."),
+        ("stretch", "Cross-validation",
+         "Replace the single validation split with 5-fold cross-validation. Report the mean and "
+         "standard deviation of accuracy, and explain what the standard deviation tells you "
+         "that a single split cannot."),
+        ("stretch", "Feature scaling",
+         "Train k-nearest neighbours with and without StandardScaler. Report both accuracies "
+         "and explain why distance-based methods care about feature scale while decision trees "
+         "do not."),
+    ],
+    reading=[
+        "Geron, *Hands-On Machine Learning with Scikit-Learn, Keras and TensorFlow*, Chapters 1-2.",
+        "scikit-learn documentation: *An Introduction to Machine Learning with scikit-learn*.",
+        "Goodfellow, Bengio & Courville, *Deep Learning*, Sections 5.1-5.5.",
+    ],
+)
 
 
 lecture(
@@ -519,17 +640,19 @@ lecture(
             "Large data, distant domain: fine-tuning still usually beats random initialisation on convergence speed.",
         ]),
     ],
-    lab="Implement a residual block and a small ResNet, empirically reproduce the degradation problem with a "
-        "20- versus 40-layer plain network, then run the transfer-learning comparison: a source model "
-        "pre-trained on one shape subset, transferred to a 100-example target task, versus training from scratch.",
+    lab="Implement a residual block and a small ResNet; reproduce the degradation problem by training "
+        "8- and 22-layer plain networks and watching the deeper one fail to fit its own training data; "
+        "then run the transfer-learning comparison: a source model pre-trained on one shape subset, "
+        "transferred to a 100-example target task, against training from scratch.",
     dataset="shapes_32.npz, shapes_imagefolder/",
     tasks=[
         ("core", "Residual block from scratch",
          "Implement BasicBlock with two 3x3 convolutions, BatchNorm and a skip connection, including the 1x1 "
          "projection needed when channel count or stride changes. Verify output shapes for both cases."),
         ("core", "Reproduce the degradation problem",
-         "Train a 20-layer and a 40-layer plain CNN. Show the deeper one has higher *training* loss. "
-         "Add skip connections to both and show the ordering reverses."),
+         "Train an 8-layer and a 22-layer plain CNN without BatchNorm. Show the deeper one has higher "
+         "TRAINING loss. Add skip connections to both and show the ordering reverses. Be explicit that "
+         "both numbers you report are training metrics, not validation ones."),
         ("core", "Small ResNet on shapes",
          "Assemble a ResNet-style network from your blocks. Reach at least 99% test accuracy and report "
          "parameter count and training time against the Lecture 5 CNN."),
@@ -539,6 +662,10 @@ lecture(
         ("core", "How many layers to unfreeze",
          "Sweep the number of unfrozen backbone blocks from 0 to all. Plot target-task accuracy against that "
          "number and state where the curve flattens."),
+        ("stretch", "What BatchNorm does to degradation",
+         "Re-run the degradation experiment with use_bn=True in both block types. Report a four-row "
+         "table of training accuracy and state how much of the degradation BatchNorm removes on its "
+         "own, and what is left for the skip connection to fix."),
         ("stretch", "1x1 bottleneck cost analysis",
          "Compare parameters and FLOPs for a plain 3x3-3x3 block against a 1x1-3x3-1x1 bottleneck of equal "
          "input/output width. Report the ratio and verify with a forward-pass timing."),
@@ -1416,13 +1543,13 @@ lecture(
     ],
 )
 
-assert len(LECTURES) == 16, f"expected 16 lectures, got {len(LECTURES)}"
-for i, lec in enumerate(LECTURES, start=1):
+assert len(LECTURES) == 17, f"expected 17 lectures (0-16), got {len(LECTURES)}"
+for i, lec in enumerate(LECTURES):
     assert lec["number"] == i, f"lecture ordering broken at {i}"
 
 
 def by_number(n: int) -> dict:
-    return LECTURES[n - 1]
+    return LECTURES[n]
 
 
 def folder_name(n: int) -> str:
