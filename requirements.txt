@@ -1,0 +1,33 @@
+# DL-601 Deep Learning — course requirements
+#
+#   pip install -r requirements.txt
+#
+# CPU-only PyTorch is sufficient for every notebook in this course. If you want
+# the CPU wheel explicitly:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# --- core ---
+torch>=2.0
+numpy>=1.24
+matplotlib>=3.7
+scikit-learn>=1.3
+pillow>=10.0
+pandas>=2.0
+
+# --- notebooks ---
+jupyterlab>=4.0
+ipykernel>=6.25
+nbformat>=5.9
+
+# --- model serving (Lectures 9 and 16) ---
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9        # required for file uploads
+pydantic>=2.6
+httpx>=0.27                    # FastAPI TestClient dependency
+pytest>=8.0
+
+# --- optional: rebuilding the course artefacts from tools/ ---
+# python-pptx>=1.0             # slide decks
+# nbclient>=0.9                # executing notebooks during the build
+# pymupdf>=1.24                # PDF inspection

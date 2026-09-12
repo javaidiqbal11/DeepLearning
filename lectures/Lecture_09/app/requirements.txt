@@ -1,0 +1,10 @@
+# Lecture 9 — model serving
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9      # required for file uploads
+pydantic>=2.6
+torch>=2.0
+pillow>=10.0
+numpy>=1.24
+httpx>=0.27                  # TestClient dependency
+pytest>=8.0

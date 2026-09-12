@@ -1,0 +1,11 @@
+# Normalise text line endings; leave binary and generated artefacts alone.
+* text=auto eol=lf
+
+*.png binary
+*.pptx binary
+*.pdf binary
+*.npz binary
+*.pt binary
+
+# Notebooks are JSON but diff poorly; treat as text without merge attempts.
+*.ipynb -merge

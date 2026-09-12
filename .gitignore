@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Build outputs (regenerate with tools/)
+build/executed/
+build/preview/
+build/runs_lecture07/
+build/registry/
+build/course_module.html
+
+# Local experiment output
+lectures/*/app/registry_store/
+lectures/*/app/**/__pycache__/
+.pytest_cache/
+
+# OS
+Thumbs.db
+.DS_Store
